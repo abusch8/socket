@@ -1,4 +1,4 @@
-import socket
+import asyncio
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP
@@ -8,38 +8,39 @@ from Crypto.Util import Counter
 HOST = 'localhost'
 PORT = 8080
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-    server.bind((HOST, PORT))
-    server.listen()
+async def handle_conn(reader, writer):
+    peer_addr = writer.get_extra_info('peername')
+    print(f'Connected by {peer_addr}')
 
-    print(f'Socket server started @ {HOST}:{PORT}')
+    aes_key = get_random_bytes(16)
 
-    conn, peer_addr = server.accept()
+    rsa_key = RSA.importKey(open('public.pem').read())
+    rsa = PKCS1_OAEP.new(rsa_key)
 
-    with conn:
-        print(f'Connected by {peer_addr}')
+    cipher = rsa.encrypt(aes_key)
+    writer.write(cipher)
 
-        aes_key = get_random_bytes(16)
+    nonce = get_random_bytes(8)
+    writer.write(nonce)
 
-        rsa_key = RSA.importKey(open('public.pem').read())
-        rsa = PKCS1_OAEP.new(rsa_key)
+    ctr = Counter.new(64, prefix=nonce, initial_value=1)
+    aes = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
 
-        cipher = rsa.encrypt(aes_key)
-        conn.sendall(cipher)
+    while True:
+        cipher = await reader.read(1024)
 
-        print(len(cipher))
+        if not cipher: break
 
-        nonce = get_random_bytes(8)
-        conn.sendall(nonce)
+        msg = aes.decrypt(cipher).decode()
 
-        ctr = Counter.new(64, prefix=nonce, initial_value=1)
-        aes = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
+        print(f'{peer_addr}: {msg}')
 
-        while True:
-            cipher = conn.recv(1024)
+async def main():
+    server = await asyncio.start_server(handle_conn, HOST, PORT)
+    addr = server.sockets[0].getsockname()
 
-            if not cipher: break
+    print(f'Socket server started @ {addr}')
 
-            msg = aes.decrypt(cipher).decode()
+    async with server: await server.serve_forever()
 
-            print(f'{peer_addr}: {msg}')
+asyncio.run(main())

@@ -1,4 +1,4 @@
-import socket
+import asyncio
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP
@@ -7,19 +7,19 @@ from Crypto.Util import Counter
 HOST = 'localhost'
 PORT = 8080
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-    client.connect((HOST, PORT))
+async def main():
+    reader, writer = await asyncio.open_connection(HOST, PORT)
 
-    cipher = client.recv(1024)
+    cipher = await reader.read(256)
 
-    print(len(cipher))
+    print(cipher)
 
     rsa_key = RSA.importKey(open('private.pem').read())
     rsa = PKCS1_OAEP.new(rsa_key)
 
     aes_key = rsa.decrypt(cipher)
 
-    nonce = client.recv(1024)
+    nonce = await reader.read(8)
 
     ctr = Counter.new(64, prefix=nonce, initial_value=1)
     aes = AES.new(aes_key, AES.MODE_CTR, counter=ctr)
@@ -29,4 +29,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
 
         cipher = aes.encrypt(msg.encode())
 
-        client.sendall(cipher)
+        writer.write(cipher)
+
+
+asyncio.run(main())
