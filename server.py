@@ -28,13 +28,16 @@ async def handle_conn(reader, writer):
 
     while True:
         cipher = await reader.read(1024)
-        if not cipher: break
+
+        if not cipher:
+            print(f'Disconnect by {peer_addr}')
+            break
 
         msg = aes.decrypt(cipher).decode()
 
         print(f'{peer_addr}: {msg}')
 
-async def main():
+async def start_server():
     server = await asyncio.start_server(handle_conn, HOST, PORT)
     addr = server.sockets[0].getsockname()
 
@@ -42,4 +45,9 @@ async def main():
 
     async with server: await server.serve_forever()
 
-asyncio.run(main())
+if __name__ == '__main__':
+    try:
+        asyncio.run(start_server())
+    except KeyboardInterrupt:
+        print('\nShutting down...')
+        exit()

@@ -7,7 +7,7 @@ from Crypto.Util import Counter
 HOST = 'localhost'
 PORT = 8080
 
-async def main():
+async def start_client():
     reader, writer = await asyncio.open_connection(HOST, PORT)
 
     cipher = await reader.read(256)
@@ -27,4 +27,9 @@ async def main():
         cipher = aes.encrypt(msg.encode())
         writer.write(cipher)
 
-asyncio.run(main())
+if __name__ == '__main__':
+    try:
+        asyncio.run(start_client())
+    except KeyboardInterrupt:
+        print('\nDisconnecting...')
+        exit()
