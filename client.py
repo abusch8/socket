@@ -12,11 +12,8 @@ async def main():
 
     cipher = await reader.read(256)
 
-    print(cipher)
-
     rsa_key = RSA.importKey(open('private.pem').read())
     rsa = PKCS1_OAEP.new(rsa_key)
-
     aes_key = rsa.decrypt(cipher)
 
     nonce = await reader.read(8)
@@ -28,8 +25,6 @@ async def main():
         msg = input('>> ')
 
         cipher = aes.encrypt(msg.encode())
-
         writer.write(cipher)
-
 
 asyncio.run(main())

@@ -10,10 +10,10 @@ PORT = 8080
 
 async def handle_conn(reader, writer):
     peer_addr = writer.get_extra_info('peername')
+
     print(f'Connected by {peer_addr}')
 
     aes_key = get_random_bytes(16)
-
     rsa_key = RSA.importKey(open('public.pem').read())
     rsa = PKCS1_OAEP.new(rsa_key)
 
@@ -28,7 +28,6 @@ async def handle_conn(reader, writer):
 
     while True:
         cipher = await reader.read(1024)
-
         if not cipher: break
 
         msg = aes.decrypt(cipher).decode()
